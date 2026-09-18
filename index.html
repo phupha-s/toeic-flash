@@ -5,21 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEIC FLASH</title>
     <link rel="stylesheet" href="css/style.css">
-    <style>
-        #debug-console {
-            margin-top: 20px;
-            padding: 10px;
-            background: #222;
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 12px;
-            border-radius: 5px;
-            max-height: 150px;
-            overflow-y: auto;
-            text-align: left;
-            word-break: break-all;
-        }
-    </style>
+    
+    <!-- โหลด Firebase SDK แบบมาตรฐาน (v8) ตัดปัญหา Module Import พัง -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
     <div class="container">
@@ -33,14 +22,14 @@
             </div>
             
             <div class="button-group" style="margin-bottom: 20px;">
-                <button id="btn-create-room" type="button">+ สร้างห้อง</button>
+                <button id="btn-create-room" type="button" onclick="handleCreateRoom()">+ สร้างห้อง</button>
             </div>
 
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
 
-            <div class="form-group" style="display: flex; gap: 10px;">
+            <div class="form-group" style="display: flex; gap: 10px; justify-content: center;">
                 <input type="text" id="room-code-input" placeholder="ใส่รหัสห้อง (5 หลัก)" maxlength="5">
-                <button id="btn-join-room" type="button">🚀 เข้าร่วมเกม</button>
+                <button id="btn-join-room" type="button" onclick="handleJoinRoom()">🚀 เข้าร่วมเกม</button>
             </div>
         </div>
 
@@ -52,61 +41,60 @@
             </div>
             <div id="player-list" class="player-list"></div>
             
-            <button id="btn-start-game" style="display: none; margin-top: 20px;">🎮 START GAME</button>
+            <button id="btn-start-game" style="display: none; margin-top: 20px;" onclick="handleStartGame()">🎮 START GAME</button>
         </div>
-
-        <!-- กล่องแสดงสถานะการทำงานบนหน้าจอ -->
-        <div id="debug-console">📟 System Log: Ready...</div>
     </div>
 
-    <!-- สคริปต์หลักเขียนควบคุมปุ่มตรงนี้เพื่อตัดปัญหาไฟล์ไม่ดึง -->
-    <script type="module">
-        import { db, ref, set, push, onValue, get } from "./js/firebase.js";
-
-        function log(msg, isError = false) {
-            const box = document.getElementById('debug-console');
-            if (box) {
-                const color = isError ? '#ff5555' : '#00ff00';
-                box.innerHTML += `<div style="color:${color};">gt; ${msg}</div>`;
-            }
-        }
-
-        window.onerror = function(msg, url, line) {
-            log(`Error: ${msg} (Line ${line})`, true);
-            return false;
+    <script>
+        // ตั้งค่า Firebase
+        var firebaseConfig = {
+            apiKey: "AIzaSyBVTZZvQuHAXY33U0PdyrJUA9f8zE6PJR8",
+            authDomain: "toeic-flash.firebaseapp.com",
+            databaseURL: "https://toeic-flash-default-rtdb.firebaseio.com",
+            projectId: "toeic-flash",
+            storageBucket: "toeic-flash.firebasestorage.app",
+            messagingSenderId: "534176894744",
+            appId: "1:534176894744:web:eed6def74094b4890f186d"
         };
 
+        // เริ่มต้นใช้งาน Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        var db = firebase.database();
+
         function generateRoomCode() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < 5; i++) {
+            var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            var result = '';
+            for (var i = 0; i < 5; i++) {
                 result += chars.charAt(Math.floor(Math.random() * chars.length));
             }
             return result;
         }
 
-        document.getElementById('btn-create-room').addEventListener('click', () => {
-            log("กำลังกดสร้างห้อง...");
-            const playerName = document.getElementById('player-name').value.trim();
+        // ฟังก์ชันสร้างห้อง
+        function handleCreateRoom() {
+            var nameInput = document.getElementById('player-name');
+            var playerName = nameInput ? nameInput.value.trim() : '';
+            
             if (!playerName) {
                 alert("กรุณากรอกชื่อของคุณก่อนสร้างห้อง");
                 return;
             }
 
-            const roomCode = generateRoomCode();
-            const roomRef = ref(db, `rooms/${roomCode}`);
+            var roomCode = generateRoomCode();
+            var roomRef = db.ref('rooms/' + roomCode);
 
-            set(roomRef, {
+            roomRef.set({
                 createdAt: Date.now(),
                 status: 'waiting',
                 currentQuestion: 0
-            }).then(() => {
-                log("สร้างห้องใน Firebase สำเร็จ: " + roomCode);
-                const playersRef = ref(db, `rooms/${roomCode}/players`);
-                const newPlayerRef = push(playersRef);
-                const playerId = newPlayerRef.key;
+            }).then(function() {
+                var playersRef = db.ref('rooms/' + roomCode + '/players');
+                var newPlayerRef = playersRef.push();
+                var playerId = newPlayerRef.key;
 
-                set(newPlayerRef, {
+                newPlayerRef.set({
                     name: playerName,
                     isHost: true,
                     score: 0
@@ -118,29 +106,32 @@
                 localStorage.setItem('toeic_flash_isHost', 'true');
 
                 showLobby(roomCode, true);
-            }).catch((err) => {
-                log("Firebase Error: " + err.message, true);
+            }).catch(function(err) {
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ Firebase: " + err.message);
             });
-        });
+        }
 
-        document.getElementById('btn-join-room').addEventListener('click', () => {
-            log("กำลังกดเข้าร่วมห้อง...");
-            const playerName = document.getElementById('player-name').value.trim();
-            const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+        // ฟังก์ชันเข้าร่วมห้อง
+        function handleJoinRoom() {
+            var nameInput = document.getElementById('player-name');
+            var codeInput = document.getElementById('room-code-input');
+            
+            var playerName = nameInput ? nameInput.value.trim() : '';
+            var roomCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
 
             if (!playerName || !roomCode) {
                 alert("กรุณากรอกชื่อและรหัสห้องให้ครบถ้วน");
                 return;
             }
 
-            const roomRef = ref(db, `rooms/${roomCode}`);
-            get(roomRef).then((snapshot) => {
+            var roomRef = db.ref('rooms/' + roomCode);
+            roomRef.once('value').then(function(snapshot) {
                 if (snapshot.exists()) {
-                    const playersRef = ref(db, `rooms/${roomCode}/players`);
-                    const newPlayerRef = push(playersRef);
-                    const playerId = newPlayerRef.key;
+                    var playersRef = db.ref('rooms/' + roomCode + '/players');
+                    var newPlayerRef = playersRef.push();
+                    var playerId = newPlayerRef.key;
 
-                    set(newPlayerRef, {
+                    newPlayerRef.set({
                         name: playerName,
                         isHost: false,
                         score: 0
@@ -155,53 +146,56 @@
                 } else {
                     alert("ไม่พบรหัสห้องนี้ กรุณาตรวจสอบอีกครั้ง");
                 }
-            }).catch((err) => {
-                log("Join Error: " + err.message, true);
+            }).catch(function(err) {
+                alert("เกิดข้อผิดพลาด: " + err.message);
             });
-        });
+        }
 
+        // แสดงหน้า Lobby
         function showLobby(roomCode, isHost) {
             document.getElementById('join-screen').style.display = 'none';
             document.getElementById('lobby-screen').style.display = 'block';
             document.getElementById('display-room-code').innerText = roomCode;
 
-            const btnStart = document.getElementById('btn-start-game');
+            var btnStart = document.getElementById('btn-start-game');
             if (btnStart) {
                 btnStart.style.display = isHost ? 'inline-block' : 'none';
-                btnStart.onclick = () => {
-                    set(ref(db, `rooms/${roomCode}/status`), 'playing');
-                };
             }
 
-            onValue(ref(db, `rooms/${roomCode}/players`), (snapshot) => {
-                const players = snapshot.val();
-                const playerListContainer = document.getElementById('player-list');
+            db.ref('rooms/' + roomCode + '/players').on('value', function(snapshot) {
+                var players = snapshot.val();
+                var playerListContainer = document.getElementById('player-list');
                 playerListContainer.innerHTML = '';
-                let count = 0;
+                var count = 0;
 
-                for (let key in players) {
+                for (var key in players) {
                     count++;
-                    const p = players[key];
-                    const div = document.createElement('div');
+                    var p = players[key];
+                    var div = document.createElement('div');
                     div.style.padding = '8px';
                     div.style.margin = '4px 0';
                     div.style.background = '#f0f0f0';
                     div.style.borderRadius = '4px';
-                    div.innerText = `${count}. ${p.name} ${p.isHost ? '👑 (Host)' : ''}`;
+                    div.innerText = count + '. ' + p.name + (p.isHost ? ' 👑 (Host)' : '');
                     playerListContainer.appendChild(div);
                 }
 
                 document.getElementById('player-count').innerText = count;
             });
 
-            onValue(ref(db, `rooms/${roomCode}/status`), (snapshot) => {
+            db.ref('rooms/' + roomCode + '/status').on('value', function(snapshot) {
                 if (snapshot.val() === 'playing') {
                     window.location.href = "game.html";
                 }
             });
         }
+
+        function handleStartGame() {
+            var roomCode = localStorage.getItem('toeic_flash_room');
+            if (roomCode) {
+                db.ref('rooms/' + roomCode + '/status').set('playing');
+            }
+        }
     </script>
 </body>
 </html>
-<!-- เติม ?v=2 ท้ายชื่อไฟล์ เพื่อบังคับให้ Safari รู้ว่าเป็นไฟล์ใหม่ -->
-<script type="module" src="js/firebase.js?v=2"></script>
