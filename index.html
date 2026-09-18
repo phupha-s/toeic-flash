@@ -6,7 +6,6 @@
     <title>TOEIC FLASH</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        /* กล่องแสดงข้อความ Error บนหน้าจอ iPad */
         #debug-console {
             margin-top: 20px;
             padding: 10px;
@@ -21,16 +20,6 @@
             word-break: break-all;
         }
     </style>
-    <script>
-        // ดักจับข้อความ Error ทั้งหมดมาโชว์บนหน้าจอ
-        window.onerror = function(msg, url, line) {
-            var box = document.getElementById('debug-console');
-            if (box) {
-                box.innerHTML += '<div style="color:#ff5555;">❌ Error: ' + msg + '<br>📍 Line: ' + line + '</div>';
-            }
-            return false;
-        };
-    </script>
 </head>
 <body>
     <div class="container">
@@ -70,8 +59,147 @@
         <div id="debug-console">📟 System Log: Ready...</div>
     </div>
 
-    <!-- สคริปต์เชื่อมต่อ Firebase และ Lobby -->
-    <script type="module" src="js/firebase.js"></script>
-    <script type="module" src="js/lobby.js"></script>
+    <!-- สคริปต์หลักเขียนควบคุมปุ่มตรงนี้เพื่อตัดปัญหาไฟล์ไม่ดึง -->
+    <script type="module">
+        import { db, ref, set, push, onValue, get } from "./js/firebase.js";
+
+        function log(msg, isError = false) {
+            const box = document.getElementById('debug-console');
+            if (box) {
+                const color = isError ? '#ff5555' : '#00ff00';
+                box.innerHTML += `<div style="color:${color};">gt; ${msg}</div>`;
+            }
+        }
+
+        window.onerror = function(msg, url, line) {
+            log(`Error: ${msg} (Line ${line})`, true);
+            return false;
+        };
+
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 5; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        document.getElementById('btn-create-room').addEventListener('click', () => {
+            log("กำลังกดสร้างห้อง...");
+            const playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) {
+                alert("กรุณากรอกชื่อของคุณก่อนสร้างห้อง");
+                return;
+            }
+
+            const roomCode = generateRoomCode();
+            const roomRef = ref(db, `rooms/${roomCode}`);
+
+            set(roomRef, {
+                createdAt: Date.now(),
+                status: 'waiting',
+                currentQuestion: 0
+            }).then(() => {
+                log("สร้างห้องใน Firebase สำเร็จ: " + roomCode);
+                const playersRef = ref(db, `rooms/${roomCode}/players`);
+                const newPlayerRef = push(playersRef);
+                const playerId = newPlayerRef.key;
+
+                set(newPlayerRef, {
+                    name: playerName,
+                    isHost: true,
+                    score: 0
+                });
+
+                localStorage.setItem('toeic_flash_room', roomCode);
+                localStorage.setItem('toeic_flash_player', playerName);
+                localStorage.setItem('toeic_flash_playerId', playerId);
+                localStorage.setItem('toeic_flash_isHost', 'true');
+
+                showLobby(roomCode, true);
+            }).catch((err) => {
+                log("Firebase Error: " + err.message, true);
+            });
+        });
+
+        document.getElementById('btn-join-room').addEventListener('click', () => {
+            log("กำลังกดเข้าร่วมห้อง...");
+            const playerName = document.getElementById('player-name').value.trim();
+            const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+            if (!playerName || !roomCode) {
+                alert("กรุณากรอกชื่อและรหัสห้องให้ครบถ้วน");
+                return;
+            }
+
+            const roomRef = ref(db, `rooms/${roomCode}`);
+            get(roomRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const playersRef = ref(db, `rooms/${roomCode}/players`);
+                    const newPlayerRef = push(playersRef);
+                    const playerId = newPlayerRef.key;
+
+                    set(newPlayerRef, {
+                        name: playerName,
+                        isHost: false,
+                        score: 0
+                    });
+
+                    localStorage.setItem('toeic_flash_room', roomCode);
+                    localStorage.setItem('toeic_flash_player', playerName);
+                    localStorage.setItem('toeic_flash_playerId', playerId);
+                    localStorage.setItem('toeic_flash_isHost', 'false');
+
+                    showLobby(roomCode, false);
+                } else {
+                    alert("ไม่พบรหัสห้องนี้ กรุณาตรวจสอบอีกครั้ง");
+                }
+            }).catch((err) => {
+                log("Join Error: " + err.message, true);
+            });
+        });
+
+        function showLobby(roomCode, isHost) {
+            document.getElementById('join-screen').style.display = 'none';
+            document.getElementById('lobby-screen').style.display = 'block';
+            document.getElementById('display-room-code').innerText = roomCode;
+
+            const btnStart = document.getElementById('btn-start-game');
+            if (btnStart) {
+                btnStart.style.display = isHost ? 'inline-block' : 'none';
+                btnStart.onclick = () => {
+                    set(ref(db, `rooms/${roomCode}/status`), 'playing');
+                };
+            }
+
+            onValue(ref(db, `rooms/${roomCode}/players`), (snapshot) => {
+                const players = snapshot.val();
+                const playerListContainer = document.getElementById('player-list');
+                playerListContainer.innerHTML = '';
+                let count = 0;
+
+                for (let key in players) {
+                    count++;
+                    const p = players[key];
+                    const div = document.createElement('div');
+                    div.style.padding = '8px';
+                    div.style.margin = '4px 0';
+                    div.style.background = '#f0f0f0';
+                    div.style.borderRadius = '4px';
+                    div.innerText = `${count}. ${p.name} ${p.isHost ? '👑 (Host)' : ''}`;
+                    playerListContainer.appendChild(div);
+                }
+
+                document.getElementById('player-count').innerText = count;
+            });
+
+            onValue(ref(db, `rooms/${roomCode}/status`), (snapshot) => {
+                if (snapshot.val() === 'playing') {
+                    window.location.href = "game.html";
+                }
+            });
+        }
+    </script>
 </body>
 </html>
