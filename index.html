@@ -185,7 +185,8 @@
 
             db.ref('rooms/' + roomCode + '/status').on('value', function(snapshot) {
                 if (snapshot.val() === 'playing') {
-                    window.location.href = "game.html";
+                    window.location.href = "play.html";
+
                 }
             });
         }
