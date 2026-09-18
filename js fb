@@ -1,0 +1,22 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBVTZZvQuhAXY33U0PdyrJUA9f8zE6PJR8",
+  authDomain: "toeic-flash.firebaseapp.com",
+  databaseURL: "https://toeic-flash-default-rtdb.firebaseio.com",
+  projectId: "toeic-flash",
+  storageBucket: "toeic-flash.firebasestorage.app",
+  messagingSenderId: "534176894744",
+  appId: "1:534176894744:web:eed6def74094b4890f186d",
+  measurementId: "G-VPKQRGNV3B"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);

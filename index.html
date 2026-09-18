@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC FLASH ⚡</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- หน้าต่างเข้าร่วมเกม -->
+    <div id="join-screen" class="container">
+        <h1>⚡ TOEIC FLASH</h1>
+        <p>เกมตอบคำถาม TOEIC แบบ Multiplayer</p>
+        
+        <input type="text" id="playerName" placeholder="ชื่อผู้เล่น (เช่น YONGYOS)" required>
+        <input type="text" id="roomCode" placeholder="รหัสห้อง (ปล่อยว่างเพื่อสร้างห้องใหม่)">
+        
+        <button class="btn-primary" onclick="joinRoom()">🚀 เข้าร่วมเกม</button>
+        <p class="or-text">หรือ</p>
+        <button class="btn-secondary" onclick="createRoom()">+ สร้างห้อง</button>
+    </div>
+
+    <!-- หน้าต่าง Lobby (ซ่อนไว้ตอนแรก) -->
+    <div id="lobby-screen" class="container hidden">
+        <h2 class="room-title">ROOM: <span id="display-room-code">G3TOEIC</span></h2>
+        <h1>⚡ TOEIC FLASH</h1>
+        
+        <div class="player-list" id="player-list">
+            <!-- รายชื่อผู้เล่นจะถูกเพิ่มที่นี่ -->
+            <div class="player-item">👤 You (Host)</div>
+        </div>
+        <p class="player-count">1 / 10</p>
+
+        <button class="btn-primary" onclick="startGame()">START GAME</button>
+    </div>
+<script src="js/questions.js"></script>
+<script type="module" src="js/game.js"></script>
+</body>
+</html>

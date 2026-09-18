@@ -1,0 +1,140 @@
+import { db, ref, set, onValue, update } from "./firebase.js";
+
+const roomCode = localStorage.getItem('toeic_flash_room');
+const playerName = localStorage.getItem('toeic_flash_player');
+const isHost = localStorage.getItem('toeic_flash_isHost') === 'true';
+
+let currentQIndex = 0;
+let timeLeft = 60;
+let timerInterval;
+let currentScore = 0;
+let highestScore = 0;
+let selectedAnswer = null;
+let playerKey = null;
+
+// หา Key ของผู้เล่นใน Firebase
+onValue(ref(db, `rooms/${roomCode}/players`), (snapshot) => {
+    const players = snapshot.val();
+    for (let key in players) {
+        if (players[key].name === playerName) {
+            playerKey = key;
+            break;
+        }
+    }
+}, { onlyOnce: true });
+
+// คอยฟังการเปลี่ยนข้อสอบจาก Firebase ( Host และ Player ซิงค์พร้อมกัน )
+onValue(ref(db, `rooms/${roomCode}/currentQuestion`), (snapshot) => {
+    const qIndex = snapshot.val();
+    if (qIndex !== null && qIndex !== undefined) {
+        currentQIndex = qIndex;
+        if (currentQIndex < questions.length) {
+            loadQuestion();
+        } else {
+            // จบ 10 ข้อ ย้ายไปหน้าสรุปผล
+            window.location.href = "result.html";
+        }
+    }
+});
+
+function loadQuestion() {
+    const q = questions[currentQIndex];
+    document.getElementById('current-q').innerText = currentQIndex + 1;
+    document.getElementById('question-text').innerText = q.text;
+    
+    const audioBtn = document.getElementById('btn-audio');
+    if (q.type === 'listening') {
+        audioBtn.style.display = "inline-block";
+        document.getElementById('q-audio').src = q.audioSrc;
+    } else {
+        audioBtn.style.display = "none";
+    }
+
+    const optionsContainer = document.getElementById('options-container');
+    optionsContainer.innerHTML = '';
+    selectedAnswer = null;
+
+    q.options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt;
+        btn.onclick = () => selectOption(btn, index);
+        optionsContainer.appendChild(btn);
+    });
+
+    startTimer();
+}
+
+function selectOption(btn, index) {
+    document.querySelectorAll('.option-btn').forEach(el => el.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedAnswer = index;
+}
+
+window.playAudio = function() {
+    const audio = document.getElementById('q-audio');
+    audio.currentTime = 0;
+    audio.play().catch(e => console.log("Audio play error: ", e));
+};
+
+function startTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 60;
+    document.getElementById('time-left').innerText = timeLeft;
+    
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById('time-left').innerText = timeLeft;
+        if (timeLeft <= 0) {
+            window.submitAnswer(); // หมดเวลา บังคับส่งคำตอบ
+        }
+    }, 1000);
+}
+
+window.submitAnswer = function() {
+    clearInterval(timerInterval);
+    const q = questions[currentQIndex];
+    
+    const isCorrect = (selectedAnswer === q.correct);
+    updateElevator(isCorrect);
+
+    // เฉพาะ Host เป็นคนสั่งเปลี่ยนข้อสอบกลางใน Firebase
+    if (isHost) {
+        setTimeout(() => {
+            set(ref(db, `rooms/${roomCode}/currentQuestion`), currentQIndex + 1);
+        }, 1500);
+    }
+};
+
+function updateElevator(isCorrect) {
+    if (isCorrect) {
+        currentScore++;
+        if (currentScore > highestScore) {
+            highestScore = currentScore;
+        }
+    } else {
+        currentScore = 0; // ตอบผิด ลิฟต์ตกลงมาที่ 0
+    }
+
+    // อัปเดตคะแนนขึ้น Firebase Realtime Database
+    if (playerKey) {
+        update(ref(db, `rooms/${roomCode}/players/${playerKey}`), {
+            score: currentScore,
+            highScore: highestScore
+        });
+    }
+
+    // แสดงผลลิฟต์บนจอ iPad ตัวเอง
+    document.querySelectorAll('.floor').forEach(el => {
+        el.innerHTML = el.id.replace('floor-', '');
+        el.classList.remove('active-floor');
+    });
+
+    const activeFloorEl = document.getElementById(`floor-${currentScore}`);
+    if (activeFloorEl) {
+        activeFloorEl.classList.add('active-floor');
+        activeFloorEl.innerHTML = `${currentScore} 🧍`;
+    }
+
+    document.getElementById('high-score').innerText = highestScore;
+}

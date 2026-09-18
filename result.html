@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result - TOEIC FLASH ⚡</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 GAME OVER</h1>
+        <p class="subtitle">FINAL RANKING</p>
+
+        <div class="leaderboard" id="leaderboard">
+            <!-- รายชื่ออันดับจะถูกสร้างด้วย JS -->
+        </div>
+
+        <button class="btn-primary" onclick="playAgain()">PLAY AGAIN</button>
+    </div>
+
+    <script>
+        // โหลดข้อมูลสถิติที่บันทึกไว้ในเครื่อง
+        window.onload = function() {
+            const myHighScore = localStorage.getItem('toeic_flash_highscore') || 0;
+            const myName = localStorage.getItem('toeic_flash_player') || 'YOU';
+
+            // จำลองข้อมูลอันดับผู้เล่น 10 คน
+            const mockPlayers = [
+                { name: "YONGYOS", score: 8 },
+                { name: myName, score: parseInt(myHighScore) },
+                { name: "PLAYER 03", score: 6 },
+                { name: "PLAYER 08", score: 5 },
+                { name: "PLAYER 02", score: 5 },
+                { name: "PLAYER 06", score: 4 },
+                { name: "PLAYER 01", score: 4 },
+                { name: "PLAYER 09", score: 3 },
+                { name: "PLAYER 05", score: 2 },
+                { name: "PLAYER 04", score: 1 }
+            ];
+
+            // เรียงลำดับจากคะแนนมากไปน้อย
+            mockPlayers.sort((a, b) => b.score - a.score);
+
+            const leaderboardEl = document.getElementById('leaderboard');
+            leaderboardEl.innerHTML = '';
+
+            mockPlayers.forEach((player, index) => {
+                let rankIcon = index + 1;
+                if (index === 0) rankIcon = '🥇 1';
+                else if (index === 1) rankIcon = '🥈 2';
+                else if (index === 2) rankIcon = '🥉 3';
+
+                const item = document.createElement('div');
+                item.className = `rank-item ${player.name === myName ? 'highlight' : ''}`;
+                item.innerHTML = `
+                    <span class="rank">${rankIcon}</span>
+                    <span class="name">${player.name}</span>
+                    <span class="score">${player.score}</span>
+                `;
+                leaderboardEl.appendChild(item);
+            });
+        };
+
+        function playAgain() {
+            window.location.href = "index.html";
+        }
+   <script type="module">
+    import { db, ref, onValue } from "./js/firebase.js";
+
+    const roomCode = localStorage.getItem('toeic_flash_room');
+    const myName = localStorage.getItem('toeic_flash_player');
+
+    onValue(ref(db, `rooms/${roomCode}/players`), (snapshot) => {
+        const playersData = snapshot.val();
+        const playersList = [];
+
+        for (let key in playersData) {
+            playersList.push({
+                name: playersData[key].name,
+                score: playersData[key].highScore || 0
+            });
+        }
+
+        // เรียงอันดับจากคะแนนสูงสุดไปน้อยสุด
+        playersList.sort((a, b) => b.score - a.score);
+
+        const leaderboardEl = document.getElementById('leaderboard');
+        leaderboardEl.innerHTML = '';
+
+        playersList.forEach((player, index) => {
+            let rankIcon = index + 1;
+            if (index === 0) rankIcon = '🥇 1';
+            else if (index === 1) rankIcon = '🥈 2';
+            else if (index === 2) rankIcon = '🥉 3';
+
+            const item = document.createElement('div');
+            item.className = `rank-item ${player.name === myName ? 'highlight' : ''}`;
+            item.innerHTML = `
+                <span class="rank">${rankIcon}</span>
+                <span class="name">${player.name}</span>
+                <span class="score">${player.score}</span>
+            `;
+            leaderboardEl.appendChild(item);
+        });
+    });
+
+    window.playAgain = function() {
+        window.location.href = "index.html";
+    };
+</script>
+
+</body>
+</html>
