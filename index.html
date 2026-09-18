@@ -3,37 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOEIC FLASH ⚡</title>
+    <title>TOEIC FLASH</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- หน้าต่างเข้าร่วมเกม -->
-    <div id="join-screen" class="container">
+    <div class="container">
         <h1>⚡ TOEIC FLASH</h1>
         <p>เกมตอบคำถาม TOEIC แบบ Multiplayer</p>
-        
-        <input type="text" id="playerName" placeholder="ชื่อผู้เล่น (เช่น YONGYOS)" required>
-        <input type="text" id="roomCode" placeholder="รหัสห้อง (ปล่อยว่างเพื่อสร้างห้องใหม่)">
-        
-        <button class="btn-primary" onclick="joinRoom()">🚀 เข้าร่วมเกม</button>
-        <p class="or-text">หรือ</p>
-        <button class="btn-secondary" onclick="createRoom()">+ สร้างห้อง</button>
-    </div>
 
-    <!-- หน้าต่าง Lobby (ซ่อนไว้ตอนแรก) -->
-    <div id="lobby-screen" class="container hidden">
-        <h2 class="room-title">ROOM: <span id="display-room-code">G3TOEIC</span></h2>
-        <h1>⚡ TOEIC FLASH</h1>
-        
-        <div class="player-list" id="player-list">
-            <!-- รายชื่อผู้เล่นจะถูกเพิ่มที่นี่ -->
-            <div class="player-item">👤 You (Host)</div>
+        <!-- หน้าเข้าห้อง / สร้างห้อง -->
+        <div id="join-screen">
+            <div class="form-group">
+                <input type="text" id="player-name" placeholder="กรอกชื่อของคุณ" maxlength="12">
+            </div>
+            
+            <div class="button-group">
+                <button id="btn-create-room" type="button">+ สร้างห้อง</button>
+            </div>
+
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
+
+            <div class="form-group">
+                <input type="text" id="room-code-input" placeholder="ใส่รหัสห้อง (5 หลัก)" maxlength="5">
+                <button id="btn-join-room" type="button">🚀 เข้าร่วมเกม</button>
+            </div>
         </div>
-        <p class="player-count">1 / 10</p>
 
-        <button class="btn-primary" onclick="startGame()">START GAME</button>
+        <!-- หน้า Lobby รอเพื่อน -->
+        <div id="lobby-screen" style="display: none;">
+            <h2>ROOM: <span id="display-room-code">-----</span></h2>
+            <div class="player-count-box">
+                👥 ผู้เล่นในห้อง (<span id="player-count">0</span>/10)
+            </div>
+            <div id="player-list" class="player-list"></div>
+            
+            <button id="btn-start-game" style="display: none; margin-top: 20px;">🎮 START GAME</button>
+        </div>
     </div>
-<script src="js/questions.js"></script>
-<script type="module" src="js/game.js"></script>
+
+    <!-- เรียกใช้สคริปต์แบบ Module -->
+    <script type="module" src="js/lobby.js"></script>
 </body>
 </html>
