@@ -13,17 +13,17 @@
 
         <!-- หน้าเข้าห้อง / สร้างห้อง -->
         <div id="join-screen">
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 15px;">
                 <input type="text" id="player-name" placeholder="กรอกชื่อของคุณ" maxlength="12">
             </div>
             
-            <div class="button-group">
+            <div class="button-group" style="margin-bottom: 20px;">
                 <button id="btn-create-room" type="button">+ สร้างห้อง</button>
             </div>
 
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
 
-            <div class="form-group">
+            <div class="form-group" style="display: flex; gap: 10px;">
                 <input type="text" id="room-code-input" placeholder="ใส่รหัสห้อง (5 หลัก)" maxlength="5">
                 <button id="btn-join-room" type="button">🚀 เข้าร่วมเกม</button>
             </div>
@@ -32,7 +32,7 @@
         <!-- หน้า Lobby รอเพื่อน -->
         <div id="lobby-screen" style="display: none;">
             <h2>ROOM: <span id="display-room-code">-----</span></h2>
-            <div class="player-count-box">
+            <div class="player-count-box" style="margin: 15px 0;">
                 👥 ผู้เล่นในห้อง (<span id="player-count">0</span>/10)
             </div>
             <div id="player-list" class="player-list"></div>
@@ -41,7 +41,8 @@
         </div>
     </div>
 
-    <!-- เรียกใช้สคริปต์แบบ Module -->
+    <!-- สคริปต์เชื่อมต่อ Firebase และ Lobby -->
+    <script type="module" src="js/firebase.js"></script>
     <script type="module" src="js/lobby.js"></script>
 </body>
 </html>
