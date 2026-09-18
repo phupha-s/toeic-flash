@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEIC FLASH</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* กล่องแสดงข้อความ Error บนหน้าจอ iPad */
+        #debug-console {
+            margin-top: 20px;
+            padding: 10px;
+            background: #222;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 5px;
+            max-height: 150px;
+            overflow-y: auto;
+            text-align: left;
+            word-break: break-all;
+        }
+    </style>
+    <script>
+        // ดักจับข้อความ Error ทั้งหมดมาโชว์บนหน้าจอ
+        window.onerror = function(msg, url, line) {
+            var box = document.getElementById('debug-console');
+            if (box) {
+                box.innerHTML += '<div style="color:#ff5555;">❌ Error: ' + msg + '<br>📍 Line: ' + line + '</div>';
+            }
+            return false;
+        };
+    </script>
 </head>
 <body>
     <div class="container">
@@ -39,6 +65,9 @@
             
             <button id="btn-start-game" style="display: none; margin-top: 20px;">🎮 START GAME</button>
         </div>
+
+        <!-- กล่องแสดงสถานะการทำงานบนหน้าจอ -->
+        <div id="debug-console">📟 System Log: Ready...</div>
     </div>
 
     <!-- สคริปต์เชื่อมต่อ Firebase และ Lobby -->
