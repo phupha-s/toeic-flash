@@ -5,24 +5,156 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEIC FLASH - Play</title>
     <link rel="stylesheet" href="css/style.css">
+    
+    <!-- โหลด Firebase SDK v8 แบบมาตรฐาน -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
     <div class="container">
         <div id="timer-display" style="font-size: 20px; font-weight: bold; color: #ff5555; margin-bottom: 10px;">
-            ⏱️ เหลือเวลา: 60 วินาที
+            ⏱️ เหลือเวลา: <span id="time-left">60</span> วินาที
         </div>
 
         <h2 id="question-number">ข้อที่ 1</h2>
-        <p id="question-text" style="font-size: 18px; margin: 20px 0;">กำลังโหลดคำถาม...</p>
+        <p id="question-text" style="font-size: 18px; margin: 20px 0; font-weight: bold;">กำลังโหลดคำถาม...</p>
 
         <div id="options-container" class="button-group" style="display: flex; flex-direction: column; gap: 10px;"></div>
 
         <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ccc;">
 
         <h3>📊 ลิฟต์คะแนน (Leaderboard)</h3>
-        <div id="elevator-leaderboard"></div>
+        <div id="player-scores"></div>
     </div>
 
-    <script type="module" src="js/game.js"></script>
+    <script>
+        // ชุดข้อสอบ TOEIC
+        const questions = [
+            { text: "1. The marketing report must be completed ------- 5:00 PM today.", options: ["A) by", "B) on", "C) at", "D) in"], correct: 0 },
+            { text: "2. Ms. Tanaka requested that all employees ------- their badges at all times.", options: ["A) wore", "B) wear", "C) wearing", "D) wears"], correct: 1 },
+            { text: "3. The new software makes it easier to ------- financial data.", options: ["A) analyze", "B) analysis", "C) analytical", "D) analyst"], correct: 0 },
+            { text: "4. Attendance at the annual safety seminar is ------- for all factory workers.", options: ["A) optional", "B) mandatory", "C) flexible", "D) voluntary"], correct: 1 },
+            { text: "5. The train to Sriracha will depart ------- Track 4 in ten minutes.", options: ["A) from", "B) to", "C) with", "D) by"], correct: 0 }
+        ];
+
+        var firebaseConfig = {
+            apiKey: "AIzaSyBVTZZvQuHAXY33U0PdyrJUA9f8zE6PJR8",
+            authDomain: "toeic-flash.firebaseapp.com",
+            databaseURL: "https://toeic-flash-default-rtdb.firebaseio.com",
+            projectId: "toeic-flash",
+            storageBucket: "toeic-flash.firebasestorage.app",
+            messagingSenderId: "534176894744",
+            appId: "1:534176894744:web:eed6def74094b4890f186d"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        var db = firebase.database();
+
+        var roomCode = localStorage.getItem('toeic_flash_room');
+        var playerName = localStorage.getItem('toeic_flash_player');
+        var playerId = localStorage.getItem('toeic_flash_playerId');
+        var isHost = localStorage.getItem('toeic_flash_isHost') === 'true';
+
+        var currentQIndex = 0;
+        var timeLeft = 60;
+        var timerInterval = null;
+        var score = 0;
+
+        // ดึงสถานะข้อสอบจาก Firebase (เพื่อให้โจทย์ขึ้นตรงกันทุกเครื่อง)
+        db.ref('rooms/' + roomCode + '/currentQuestion').on('value', function(snapshot) {
+            var qIdx = snapshot.val();
+            if (qIdx !== null && qIdx !== undefined) {
+                currentQIndex = qIdx;
+                if (currentQIndex < questions.length) {
+                    loadQuestion();
+                } else {
+                    alert("จบเกม! คะแนนของคุณคือ: " + score);
+                    window.location.href = "index.html";
+                }
+            }
+        });
+
+        // ดึงคะแนนของผู้เล่นทุกคนแสดงบนหน้าจอ
+        db.ref('rooms/' + roomCode + '/players').on('value', function(snapshot) {
+            var players = snapshot.val();
+            var scoreContainer = document.getElementById('player-scores');
+            scoreContainer.innerHTML = '';
+            for (var key in players) {
+                var p = players[key];
+                var div = document.createElement('div');
+                div.style.padding = '8px';
+                div.style.margin = '4px 0';
+                div.style.background = '#eef';
+                div.style.borderRadius = '4px';
+                div.innerText = p.name + ": " + (p.score || 0) + " คะแนน";
+                scoreContainer.appendChild(div);
+            }
+        });
+
+        function loadQuestion() {
+            var q = questions[currentQIndex];
+            document.getElementById('question-number').innerText = "ข้อที่ " + (currentQIndex + 1);
+            document.getElementById('question-text').innerText = q.text;
+
+            var optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            q.options.forEach(function(opt, index) {
+                var btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.style.padding = '12px';
+                btn.style.fontSize = '16px';
+                btn.style.cursor = 'pointer';
+                btn.innerText = opt;
+                btn.onclick = function() { selectAnswer(index); };
+                optionsContainer.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 60;
+            document.getElementById('time-left').innerText = timeLeft;
+            timerInterval = setInterval(function() {
+                timeLeft--;
+                document.getElementById('time-left').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    nextQuestion();
+                }
+            }, 1000);
+        }
+
+        function selectAnswer(selectedIndex) {
+            clearInterval(timerInterval);
+            var q = questions[currentQIndex];
+            if (selectedIndex === q.correct) {
+                score++;
+                alert("ถูกต้อง! 🎉");
+            } else {
+                alert("ผิดครับ! ❌ คำตอบที่ถูกคือ: " + q.options[q.correct]);
+            }
+
+            // อัปเดตคะแนนลง Firebase
+            if (playerId) {
+                db.ref('rooms/' + roomCode + '/players/' + playerId).update({
+                    score: score
+                });
+            }
+
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (isHost) {
+                // Host เป็นคนสั่งเปลี่ยนข้อสอบกลางใน Firebase
+                db.ref('rooms/' + roomCode + '/currentQuestion').set(currentQIndex + 1);
+            }
+        }
+    </script>
 </body>
 </html>
